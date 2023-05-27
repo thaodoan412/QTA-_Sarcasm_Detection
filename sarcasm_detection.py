@@ -50,6 +50,19 @@ def labels(x):
     else:
         return 1
 
+import re
+
+def remove_emoji(string):
+    emoji_pattern = re.compile("["
+                           u"\U0001F600-\U0001F64F"  # emoticons
+                           u"\U0001F300-\U0001F5FF"  # symbols & pictographs
+                           u"\U0001F680-\U0001F6FF"  # transport & map symbols
+                           u"\U0001F1E0-\U0001F1FF"  # flags (iOS)
+                           u"\U00002702-\U000027B0"
+                           u"\U000024C2-\U0001F251"
+                           "]+", flags=re.UNICODE)
+    return emoji_pattern.sub(r'', string) # no emoji
+
 class CustomTrainer(Trainer):
     def compute_loss(self, model, inputs, return_outputs=False):
         labels = inputs.get("labels")
@@ -64,22 +77,23 @@ class CustomTrainer(Trainer):
 if __name__ == '__main__':
     # dataset address
     train = pd.read_csv('https://raw.githubusercontent.com/AmirAbaskohi/SemEval2022-Task6-Sarcasm-Detection/main/Data/Main%20Dataset/Train_Dataset.csv')
-    test = pd.read_csv('../../Data/Test_Dataset.csv')
-
+    test = pd.read_csv('https://raw.githubusercontent.com/thaodoan412/QTA-_Sarcasm_Detection/main/cleaned_tweets.csv')
+    test["sarcastic"] = np.nan
+    test["text"] = test['text'].apply(remove_emoji)
     train_tweets = train['tweet'].values.tolist()
     train_labels = train['sarcastic'].values.tolist()
-    test_tweets = test['tweet'].values.tolist()
+    test_tweets = test['text'].values.tolist()
     test_labels = test['sarcastic'].values.tolist()
-
+    train_tweets = [str(tweet) for tweet in train['tweet'].values.tolist()]
+    test_tweets = [str(tweet) for tweet in test['text'].values.tolist()]
     model_name = 'detecting-Sarcasm'
-
-    task='sentiment'
-    MODEL = f"cardiffnlp/twitter-roberta-base-{task}"
-
-    tokenizer = AutoTokenizer.from_pretrained(MODEL, num_labels=2, loss_function_params={"weight": [0.75, 0.25]})
+    MODEL = 'cardiffnlp/twitter-roberta-base-sentiment'
+    model = AutoModelForSequenceClassification.from_pretrained(MODEL)
+    tokenizer = AutoTokenizer.from_pretrained(MODEL)
     
-    train_encodings = tokenizer(train_tweets, truncation=True, padding=True,return_tensors = 'pt')
-    test_encodings = tokenizer(test_tweets, truncation=True, padding=True,return_tensors = 'pt')
+    
+    train_encodings = tokenizer(train_tweets, truncation=True, padding=True,max_length=512,return_tensors = 'pt')
+    test_encodings = tokenizer(test_tweets, truncation=True, padding=True,max_length=512,return_tensors = 'pt')
 
     train_dataset = SarcasmDataset(train_encodings, train_labels)
     test_dataset = SarcasmDataset(test_encodings, test_labels)
@@ -89,7 +103,7 @@ if __name__ == '__main__':
         per_device_eval_batch_size=64, warmup_steps=500, weight_decay=0.01,logging_dir='./logs4',
         load_best_model_at_end=True,
     )
-
+    
     model = AutoModelForSequenceClassification.from_pretrained(MODEL)
 
     model.save_pretrained(MODEL)
@@ -103,3 +117,5 @@ if __name__ == '__main__':
     trainer.train()
 
     trainer.evaluate()
+
+
