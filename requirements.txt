@@ -5,7 +5,6 @@ pandas
 mxnet-cu101
 sentence-transformers
 tensorflow 
-tensorflow-gpu
 tensorflow-hub
 bert
 torch 
