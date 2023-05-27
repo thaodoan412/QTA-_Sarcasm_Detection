@@ -1,8 +1,5 @@
 numpy
-tqdm
 pandas
-mxnet-cu101
-sentence-transformers
 tensorflow 
 tensorflow-hub
 bert
@@ -10,12 +7,3 @@ torch
 pytorch-lightning
 transformers==4.28.0
 scikit-learn
-ipywidgets
-bertviz
-json5
-mxnet
-nltk 
-gensim
-sentencepiece
-datasets
-collections2
