@@ -71,7 +71,7 @@ def remove_emoji(string):
 
 
 class CustomTrainer(Trainer):
-    def compute_loss(self, model, inputs, return_outputs=False):
+    def compute_(self, model, inputs, return_outputs=False):
         labels = inputs.get("labels")
         # forward pass
         outputs = model(**inputs)
@@ -81,12 +81,18 @@ class CustomTrainer(Trainer):
         loss = loss_fct(logits.view(-1, self.model.config.num_labels), labels.view(-1))
         return (loss, outputs) if return_outputs else loss
 
+def eval_conversation(text, model, tokenizer):
+  input_ids = tokenizer.encode(text + '</s>', return_tensors='pt')
+  output = model.generate(input_ids=input_ids, max_length=3)
+  dec = [tokenizer.decode(ids) for ids in output]
+  label = dec[0]
+  return label
 
 if __name__ == '__main__':
     # dataset address
     train = pd.read_csv('https://raw.githubusercontent.com/AmirAbaskohi/SemEval2022-Task6-Sarcasm-Detection/main/Data/Main%20Dataset/Train_Dataset.csv')
     test = pd.read_csv('https://raw.githubusercontent.com/thaodoan412/QTA-_Sarcasm_Detection/main/cleaned_tweets.csv')
-    test["sarcastic"] = np.nan
+    test["sarcastic"] = 1
     test["text"] = test['text'].apply(remove_emoji)
     train_tweets = train['tweet'].values.tolist()
     train_labels = train['sarcastic'].values.tolist()
@@ -94,13 +100,11 @@ if __name__ == '__main__':
     test_labels = test['sarcastic'].values.tolist()
     train_tweets = [str(tweet) for tweet in train['tweet'].values.tolist()]
     test_tweets = [str(tweet) for tweet in test['text'].values.tolist()]
-    model_name = 'detecting-Sarcasm'
     task='sentiment'
     MODEL = f"cardiffnlp/twitter-roberta-base-{task}"
     tokenizer = AutoTokenizer.from_pretrained(MODEL, num_labels=2, loss_function_params={"weight": [0.75, 0.25]})
     train_encodings = tokenizer(train_tweets, truncation=True, padding=True, max_length=512, return_tensors='pt')
     test_encodings = tokenizer(test_tweets, truncation=True, padding=True, max_length=512, return_tensors='pt')
-
     train_dataset = SarcasmDataset(train_encodings, train_labels)
     test_dataset = SarcasmDataset(test_encodings, test_labels)  # Use SarcasmDataset for test_dataset as well
  
@@ -116,10 +120,10 @@ if __name__ == '__main__':
 
     trainer = Trainer(
         model=model, args=training_args, train_dataset=train_dataset,
-        eval_dataset=test_dataset,
         compute_metrics=compute_metrics,
     )
 
     trainer.train()
 
-    trainer.evaluate()
+    predict = trainer.predict(test_dataset)
+    print(predict)
