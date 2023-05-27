@@ -124,6 +124,6 @@ if __name__ == '__main__':
     )
 
     trainer.train()
-
+    trainer.evaluate()
     predict = trainer.predict(test_dataset)
     print(predict)
