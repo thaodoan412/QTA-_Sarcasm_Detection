@@ -57,6 +57,7 @@ def labels(x):
 
 import re
 
+
 def remove_emoji(string):
     emoji_pattern = re.compile("["
                                u"\U0001F600-\U0001F64F"  # emoticons
@@ -70,7 +71,7 @@ def remove_emoji(string):
 
 
 class CustomTrainer(Trainer):
-    def compute_loss(self, model, inputs, return_outputs=False):
+    def compute_metrics(self, model, inputs, return_outputs=False):
         labels = inputs.get("labels")
         # forward pass
         outputs = model(**inputs)
@@ -83,8 +84,10 @@ class CustomTrainer(Trainer):
 
 if __name__ == '__main__':
     # dataset address
-    train = pd.read_csv('https://raw.githubusercontent.com/AmirAbaskohi/SemEval2022-Task6-Sarcasm-Detection/main/Data/Main%20Dataset/Train_Dataset.csv')
-    test = pd.read_csv('https://raw.githubusercontent.com/thaodoan412/QTA-_Sarcasm_Detection/main/cleaned_tweets.csv')
+    # train = pd.read_csv('https://raw.githubusercontent.com/AmirAbaskohi/SemEval2022-Task6-Sarcasm-Detection/main/Data/Main%20Dataset/Train_Dataset.csv')
+    # test = pd.read_csv('https://raw.githubusercontent.com/thaodoan412/QTA-_Sarcasm_Detection/main/cleaned_tweets.csv')
+    train = pd.read_csv('./Train_Dataset_minimal.csv')
+    test = pd.read_csv('cleaned_tweets_minimal.csv')
     test["sarcastic"] = 1
     test["text"] = test['text'].apply(remove_emoji)
     train_tweets = train['tweet'].values.tolist()
@@ -110,14 +113,29 @@ if __name__ == '__main__':
     )
 
     model = AutoModelForSequenceClassification.from_pretrained(MODEL)
-
     model.save_pretrained(MODEL)
-
     trainer = Trainer(
         model=model, args=training_args, train_dataset=train_dataset,eval_dataset=test_dataset,
         compute_metrics=compute_metrics,
     )
     trainer.train()
     trainer.evaluate()
-    predict = trainer.predict(test_dataset)
-    print(predict)
+    preds = trainer.predict(test_dataset=test_dataset)
+
+    probs = torch.from_numpy(preds[0]).softmax(1)
+
+    predictions = probs.numpy()
+
+    newdf = pd.DataFrame(predictions,columns=['Negative_0','Neutral_1','Positive_2'])
+
+    results = np.argmax(predictions,axis=1)
+
+    print(results)
+
+    test['sarcastic'] = 0    
+    test_encodings = tokenizer(test_tweets,
+                            truncation=True, 
+                            padding=True,
+                            return_tensors = 'pt')
+
+    f1_score(test_labels, test['sarcastic_result'])
